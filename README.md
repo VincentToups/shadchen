@@ -135,3 +135,9 @@ Judicious application of the matchers `AND`, `FUNCALL`, and `?` allow
 the definition of arbitrary matchers without exposing the guts of the
 matching system.
 
+* * *
+
+    Copyright 2012, Vincent Toups
+    This program is distributed under the terms of the GNU Lesser 
+    General Public License (see license.txt).
+
