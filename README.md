@@ -25,10 +25,11 @@ the parts of the data structure they indicate.  Above, we match `_` to
 the `car` of a list, `x` to the `car` of that list's `cdr`, and `rest`
 to the `cdr` of that list.  
 
-If we don't pass in a list, the match fails.  (Because of the behavio
-of CL's `car` and `cdr`, which return `NIL` on `NIL`, this form
+If we don't pass in a list, the match fails.  (Because of the behavior
+of CL's `car` and `cdr`, which return `NIL` on `NIL`, the form `cons`
 doesn't enforce a length requirement on the input list, and will
-return `NIL` for a two element list.  
+return `NIL` for an empty list.  This corresponds with the fact that
+in Common Lisp `(car nil)` is `nil` and `(cdr nil)` is `nil`.)
 
 We might instead write:
 
