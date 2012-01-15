@@ -1,9 +1,9 @@
 Shadchen: A pattern matching library
 ====================================
 
-> shadchen: Noun
->   matchmaker
-> from Yiddish
+    shadchen: Noun
+      matchmaker
+    from Yiddish
 
 (note: there is an emacs lisp port of this library [here][shadchen-el])
 
