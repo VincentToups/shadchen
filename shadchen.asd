@@ -5,8 +5,12 @@
 ;;; General Public License (see license.txt).
 
 (asdf:defsystem #:shadchen
-  :serial t
- :depends-on (#:lisp-unit)
-  :components ((:file "package")
-               (:file "shadchen")))
+	:serial t
+	:depends-on (#:lisp-unit)
+	:author "Vincent Toups"
+	:maintainer "Vincent Toups"
+	:description "A pattern matching library."
+	:long-description "Shadchen (matchmaker) is a Racket-inspired pattern matching library."
+	:components ((:file "package")
+				 (:file "shadchen")))
 
