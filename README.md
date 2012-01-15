@@ -5,6 +5,8 @@ Shadchen: A pattern matching library
 >   matchmaker
 > from Yiddish
 
+(note: there is an emacs lisp port of this library [here][shadchen-el])
+
 I love pattern-matching, which I find to be a great way to combine
 destructuring data with type-checking when used in dynamic languages.
 If you aren't familiar with how pattern matching works, here is an
@@ -140,4 +142,6 @@ matching system.
     Copyright 2012, Vincent Toups
     This program is distributed under the terms of the GNU Lesser 
     General Public License (see license.txt).
+
+[shadchen-el]:https://github.com/VincentToups/emacs-utils/blob/master/shadchen.el
 
