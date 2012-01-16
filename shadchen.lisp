@@ -188,6 +188,8 @@ An error is thrown when no matches are found."
   (let ((name (gensym "MATCH-LAMBDA-NAME-")))
 	`(function (lambda (,name) (match ,name ,@forms)))))
 
+
+
 (define-test match1
   (assert-equal *match-fail* (match1 (list x y) (list 10 11 13) (+ x y)))
   (assert-equal '(10 (11 12 13)) (match1 (cons x y) (list 10 11 12 13) (list x y)))
@@ -224,10 +226,6 @@ An error is thrown when no matches are found."
 				  ((? #'stringp) 'string))))
 
 (run-tests)
-
-(match (list 1 2 3)
-
-
 
 
 ;;; "shadchen" goes here. Hacks and glory await!
