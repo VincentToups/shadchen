@@ -6,12 +6,17 @@
 
 (in-package #:shadchen)
 
+
+
 (defstruct match-fail-struct)
 
 (defvar *match-fail* (make-match-fail-struct))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+
 (defun non-keyword-symbol (o)
-  (and (symbolp o)
+  (and o
+	   (symbolp o)
 	   (not (keywordp o))))
 
 (defun match-list-expander* (sub-expressions match-value body)
@@ -210,7 +215,7 @@ An error is thrown when no matches are found."
 (defun length=1 (lst)
   "Returns T when LST has one element."
   (and (consp lst)
-	   (not (cdr lst))))
+	   (not (cdr lst)))))
 
 (defpattern list-rest (&rest patterns)
   (if (length=1 patterns)
@@ -220,6 +225,24 @@ An error is thrown when no matches are found."
 		`(and (funcall #'car ,pat)
 			  (funcall #'cdr 
 					   (list-rest ,@pats))))))
+
+(defun htbl-fetcher (key)
+  #'(lambda (htbl) (gethash key htbl)))
+
+(defmacro named-let (name binders &body body)
+  `(labels ((,name ,(mapcar #'car binders) ,@body))
+	 (name ,@(mapcar #'cadr binders))))
+
+(defpattern hash-table (&rest key/pat-pairs)
+  `(and (? #'hash-tablep)
+		,@(named-let recur 
+					 ((pairs key/pat-pairs)
+					  (acc nil))
+					 (match pairs
+					   (nil (reverse acc))
+					   ((list-rest key pat rest)
+						(recur rest
+							   (cons `(funcall (htbl-fetch ,key) ,pat) acc)))))))
 
 (define-test match1
   (assert-equal *match-fail* (match1 (list x y) (list 10 11 13) (+ x y)))
