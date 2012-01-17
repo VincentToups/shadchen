@@ -130,11 +130,30 @@ two terms, a function and a match against the result.  Got
   `(setf (gethash ',name *extended-patterns*)
 		 #'(lambda ,args ,@body)))
 
+(defun match-literal-string (match-expression match-value body)
+  `(if (string= ,match-expression ,match-value) 
+	   (progn ,@body)
+	   *match-fail*))
+
+(defun match-literal-number (match-expression match-value body)
+  `(if (= ,match-expression ,match-value)
+	   (progn ,@body)
+	   *match-fail*))
+
+(defun match-literal-keyword (match-expression match-value body)
+  `(if (eq ,match-expression ,match-value)
+	   (progn ,@body)
+	   *match-fail*))
+
 (defmacro match1 (match-expression match-value &body body)
   (cond 
 	((non-keyword-symbol match-expression)
 	 `(let ((,match-expression ,match-value))
 		,@body))
+	((stringp match-expression) 
+	 (match-literal-string match-expression match-value body))
+	((numberp match-expression)
+	 (match-literal-number match-expression match-value body))
 	((extended-patternp (car match-expression)) 
 	 (match-extended-pattern-expander match-expression match-value body))
 	((listp match-expression)
@@ -188,7 +207,19 @@ An error is thrown when no matches are found."
   (let ((name (gensym "MATCH-LAMBDA-NAME-")))
 	`(function (lambda (,name) (match ,name ,@forms)))))
 
+(defun length=1 (lst)
+  "Returns T when LST has one element."
+  (and (consp lst)
+	   (not (cdr lst))))
 
+(defpattern list-rest (&rest patterns)
+  (if (length=1 patterns)
+	  `(? #'listp ,(car patterns))
+	  (let ((pat (car patterns))
+			(pats (cdr patterns)))
+		`(and (funcall #'car ,pat)
+			  (funcall #'cdr 
+					   (list-rest ,@pats))))))
 
 (define-test match1
   (assert-equal *match-fail* (match1 (list x y) (list 10 11 13) (+ x y)))
@@ -206,6 +237,8 @@ An error is thrown when no matches are found."
   (assert-equal *match-fail* (match1 (? #'numberp x) "cat" x))
   (assert-equal 21 (match1 (values x y) (values 10 11) (+ x y )))
   (assert-equal 10 (match1 (funcall #'car x) (cons 10 11) x))
+  (assert-equal '(10 (11 12))
+				(match1 (list-rest x y) (list 10 11 12) (list x y)))
   (assert-error 'simple-error
 				(match1 (?) "" ""))
   (assert-error 'simple-error

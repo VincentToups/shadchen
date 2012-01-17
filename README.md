@@ -53,9 +53,21 @@ Shadchen supports the following built-in patterns.
 Matches anything, binding <SYMBOL> to that value in the body
 expressions.
 
+    <KEYwORD-LITERAL> 
+
+Matches only when the value is the same keyword.
+
+    <NUMBER-LITERAL>
+
+Matches only when the value is the same number.
+
+    <STRING-LITERAL>
+
+Matches only when the value is `string=` is the same string.	
+
     (CONS <PATTERN1> <PATTERN2>)
 
-Matches any CONS cell, or NIL, then matches `<PATTERN1>` and
+Matches any `CONS` cell, or `NIL`, then matches `<PATTERN1>` and
 `<PATTERN2>`, executing the body in a context where their matches are
 bound.  If the match value is NIL, then each `PATTERN` matches against
 NIL.
@@ -65,7 +77,12 @@ NIL.
 Matches a list of length N, then matches each pattern `<PN>` to the
 elements of that list.
 
-     (QUOTE DATUM)
+    (LIST-REST <P1> ... <PN> <REST-PATTERN)
+
+Matches <P1> - <PN> to elements in at list, as in the `LIST` pattern.
+The final `<REST-PATTERN>` is matched against the rest of the list.
+
+    (QUOTE DATUM)
 
 Only succeeds when `DATUM` is `EQUALP` to the match-value.  Binds no
 values.
