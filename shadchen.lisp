@@ -150,8 +150,28 @@ two terms, a function and a match against the result.  Got
 		 (progn ,@body)
 		 *match-fail*))
 
+  (defun match-let-expander (match-expression match-value body)
+	`(let ,(cdr match-expression) ,@body))
+
+  (defun match-or-expander (match-expression match-value body)
+	(cond 
+	  ((length=1 (cdr match-expression))
+	   `(match1 ,(cadr match-expression) ,match-value ,@body))
+	  (:otherwise
+	   (let* ((forms (cdr match-expression))
+			  (form (car forms))
+			  (rest (cdr forms))
+			  (nm (gensym "MATCH-OR-EXPANDER-NM-")))
+		 `(let* ((,nm ,match-value)
+				 (result (match1 ,form ,nm ,@body)))
+			(if (not (eq *match-fail* result))
+				result
+				(match1 (or ,@rest) ,nm ,@body)))))))
+
+
   (defmacro match1 (match-expression match-value &body body)
 	(cond 
+	  ((not match-expression) `(if (not ,match-value) (progn ,@body) *match-fail*))
 	  ((non-keyword-symbol match-expression)
 	   `(let ((,match-expression ,match-value))
 		  ,@body))
@@ -169,8 +189,10 @@ two terms, a function and a match against the result.  Got
 		 (and (match-and-expander match-expression match-value body))
 		 (? (match-?-expander match-expression match-value body))
 		 (funcall (match-funcall-expander match-expression match-value body))
+		 (or (match-or-expander match-expression match-value body))
 		 (bq (match-backquote-expander match-expression match-value body))
 		 (values (match-values-expander match-expression match-value body))
+		 (let (match-let-expander match-expression match-value body))
 		 (otherwise (error "MATCH1: Unrecognized match-expression ~a" match-expression))))
 	  (:otherwise
 	   (error "MATCH1: Unrecognized match-expression ~a" match-expression))))
@@ -251,12 +273,15 @@ An error is thrown when no matches are found."
 					  (acc nil))
 					 (match pairs
 					   (nil (reverse acc))
-					   ((list-rest key pat rest)
-						(recur rest
-							   (cons `(funcall (htbl-fetch ,key) ,pat) acc)))))))
+					   ((cons key (cons pat rest))
+							 (recur rest
+									(cons `(funcall (htbl-fetch ,key) ,pat) acc)))))))
+
+(defpattern let1 (name value)
+  `(let (,name ,value)))
 
 (define-test match1
-  (assert-equal *match-fail* (match1 (list x y) (list 10 11 13) (+ x y)))
+	(assert-equal *match-fail* (match1 (list x y) (list 10 11 13) (+ x y)))
   (assert-equal '(10 (11 12 13)) (match1 (cons x y) (list 10 11 12 13) (list x y)))
   (assert-equal '(10 11 12) (match1 (list x (list y z)) (list 10 (list 11 12)) (list x y z)))
   (assert-equal '(10 12) (match1 (list x (list 'y z)) (list 10 (list 'y 12)) (list x z)))
@@ -264,8 +289,8 @@ An error is thrown when no matches are found."
   (assert-equal 'success (match1 (bq (x y z)) (list 'x 'y 'z) 'success))
   (assert-equal '(10 11) 
 				(match1 (bq x (uq (list a b)) z)
-					(list 'x (list 10 11) 'z) 
-				  (list a b)))
+						(list 'x (list 10 11) 'z) 
+						(list a b)))
   (assert-equal '((10 11) 10 11) (match1 (and x (list a b)) (list 10 11) (list x a b)))
   (assert-equal 10 (match1 (? #'numberp x) 10 x))
   (assert-equal *match-fail* (match1 (? #'numberp x) "cat" x))
@@ -275,6 +300,12 @@ An error is thrown when no matches are found."
 				(match1 (list-rest x y) (list 10 11 12) (list x y)))
   (assert-error 'simple-error
 				(match1 (?) "" ""))
+  (assert-equal 10 (match1 (let (x 10)) 'any-val x))
+  (assert-equal "x" (match1 (or (? #'stringp x) 
+								(? #'numberp x)) "x" x))
+  (assert-equal 10 (match1 (or (? #'stringp x) 
+							   (? #'numberp x)) 10 x))
+
   (assert-error 'simple-error
 				(match1 (? a b c) "" "")))
 
