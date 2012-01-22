@@ -5,7 +5,12 @@ Shadchen: A pattern matching library
       matchmaker
     from Yiddish
 
-(note: there is an emacs lisp port of this library [here][shadchen-el])
+(note: there is an emacs lisp port of this library
+ [here][shadchen-el])
+(note: if you are reading this README for the emacs version of the
+ library, keep in mind that emacs symbols are case sensitive.  Symbols
+ are all lowercase in this library.)
+
 
 I love pattern-matching, which I find to be a great way to combine
 destructuring data with type-checking when used in dynamic languages.
@@ -92,6 +97,13 @@ values.
 Tests all `<PN>` against the same value, succeeding only when all
 patterns match, and binding all variables in all patterns.
 
+     (OR <P1> .. <PN>)
+
+Tries each `<PN>` in turn, and succeeds if any `<PN>` succeeds.  The
+body of the matched expression is then executed with that `<PN>'s`
+bindings.  It is up to the user to ensure that the bindings are
+relevant to the body.
+
      (? PREDICATE <PATTERN>)
 
 Succeeds when `(FUNCALL PREDICATE MATCH-VALUE)` is true and when
@@ -122,6 +134,30 @@ Will fail, since `10` and `1` don't match.
     (values <P1> ... <PN>)
 
 Will match multiple values produced by a `(values ...)` form.
+
+    (let (n1 v1) (n2 v2) ... (nn vn))
+
+Not a pattern matching pattern, per se.  `let` always succeeds and
+produces a context where the bindings are active.  This can be used to
+provide default alternatives, as in:
+
+    (defun not-nil (x) x)
+
+    (match (list 1) 
+     ((cons hd (or (? #'non-nil tl)
+                   (let (tl '(2 3)))))
+      (list hd tl)))
+
+Will result in `(1 (2 3))` but 
+
+    (match (list 1 4) 
+     ((cons hd (or (? #'non-nil tl)
+                   (let (tl '(2 3)))))
+      (list hd tl)))
+
+Will produce `(1 (4))`.  Note that a similar functionality can be
+provided with `funcall`.
+
 
 Extending shadchen
 ------------------
