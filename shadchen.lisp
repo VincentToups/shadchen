@@ -175,6 +175,8 @@ two terms, a function and a match against the result.  Got
 	  ((non-keyword-symbol match-expression)
 	   `(let ((,match-expression ,match-value))
 		  ,@body))
+	  ((keywordp ,match-expression) 
+	   (match-literal-keyword match-expression match-value body))
 	  ((stringp match-expression) 
 	   (match-literal-string match-expression match-value body))
 	  ((numberp match-expression)
