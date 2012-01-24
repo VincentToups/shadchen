@@ -290,7 +290,7 @@ An error is thrown when no matches are found."
   (assert-equal 'success (match1 (bq (x)) (list 'x) 'success))
   (assert-equal 'success (match1 (bq (x y z)) (list 'x 'y 'z) 'success))
   (assert-equal '(10 11) 
-				(match1 (bq x (uq (list a b)) z)
+				(match1 (bq (x (uq (list a b)) z))
 						(list 'x (list 10 11) 'z) 
 						(list a b)))
   (assert-equal '((10 11) 10 11) (match1 (and x (list a b)) (list 10 11) (list x a b)))
