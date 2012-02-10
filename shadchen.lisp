@@ -75,8 +75,7 @@
 	(cond 
 	  ((not sub-expressions) `(progn ,@body))
 	  (:otherwise 
-	   (let ((s1 (car sub-expressions))
-			 (name (gensym "MATCH-AND-EXPANDER*-")))
+	   (let ((s1 (car sub-expressions)))
 		 `(match1 ,s1 ,match-name 
 			(match1 (and ,@(cdr sub-expressions)) ,match-name ,@body))))))
 
@@ -123,6 +122,7 @@ two terms, a function and a match against the result.  Got
   (defun extended-patternp (pattern-head) 
 	"Return T if PATTERN-HEAD indicates a user provided pattern."
 	(multiple-value-bind (val in) (gethash pattern-head *extended-patterns*)
+	(declare (ignore val))
 	  in))
 
   (defun match-extended-pattern-expander (match-expression match-value body)
@@ -151,6 +151,7 @@ two terms, a function and a match against the result.  Got
 		 *match-fail*))
 
   (defun match-let-expander (match-expression match-value body)
+  (declare (ignore match-value))
 	`(let ,(cdr match-expression) ,@body))
 
   (defun match-or-expander (match-expression match-value body)
@@ -256,7 +257,7 @@ An error is thrown when no matches are found."
 
 (defmacro named-let (name binders &body body)
   `(labels ((,name ,(mapcar #'car binders) ,@body))
-	 (name ,@(mapcar #'cadr binders))))
+	 (,name ,@(mapcar #'cadr binders))))
 
 (defpattern struct (struct-name &rest fields)
   `(and
@@ -271,61 +272,18 @@ An error is thrown when no matches are found."
 (defpattern hash-table (&rest key/pat-pairs)
   `(and (? #'hash-tablep)
 		,@(named-let recur 
-					 ((pairs key/pat-pairs)
-					  (acc nil))
-					 (match pairs
-					   (nil (reverse acc))
-					   ((cons key (cons pat rest))
-							 (recur rest
-									(cons `(funcall (htbl-fetch ,key) ,pat) acc)))))))
+		      ((pairs key/pat-pairs)
+		       (acc nil))
+		    (match pairs
+		      (nil (reverse acc))
+		      ((cons key (cons pat rest))
+		       (recur rest
+			      (cons `(funcall (htbl-fetch ,key) ,pat) acc)))))))
 
 (defpattern let1 (name value)
   `(let (,name ,value)))
 
-(define-test match1
-	(assert-equal *match-fail* (match1 (list x y) (list 10 11 13) (+ x y)))
-  (assert-equal '(10 (11 12 13)) (match1 (cons x y) (list 10 11 12 13) (list x y)))
-  (assert-equal '(10 11 12) (match1 (list x (list y z)) (list 10 (list 11 12)) (list x y z)))
-  (assert-equal '(10 12) (match1 (list x (list 'y z)) (list 10 (list 'y 12)) (list x z)))
-  (assert-equal 'success (match1 (bq (x)) (list 'x) 'success))
-  (assert-equal 'success (match1 (bq (x y z)) (list 'x 'y 'z) 'success))
-  (assert-equal '(10 11) 
-				(match1 (bq (x (uq (list a b)) z))
-						(list 'x (list 10 11) 'z) 
-						(list a b)))
-  (assert-equal '((10 11) 10 11) (match1 (and x (list a b)) (list 10 11) (list x a b)))
-  (assert-equal 10 (match1 (? #'numberp x) 10 x))
-  (assert-equal *match-fail* (match1 (? #'numberp x) "cat" x))
-  (assert-equal 21 (match1 (values x y) (values 10 11) (+ x y )))
-  (assert-equal 10 (match1 (funcall #'car x) (cons 10 11) x))
-  (assert-equal '(10 (11 12))
-				(match1 (list-rest x y) (list 10 11 12) (list x y)))
-  (assert-error 'simple-error
-				(match1 (?) "" ""))
-  (assert-equal 10 (match1 (let (x 10)) 'any-val x))
-  (assert-equal "x" (match1 (or (? #'stringp x) 
-								(? #'numberp x)) "x" x))
-  (assert-equal 10 (match1 (or (? #'stringp x) 
-							   (? #'numberp x)) 10 x))
 
-  (assert-error 'simple-error
-				(match1 (? a b c) "" "")))
-
-(define-test match
-  (assert-equal
-   5 (match (list 1 2 3)
-	   ((list x y) (+ x y))
-	   ((list x y z) (+ y z))))
-  (assert-error 'simple-error
-				(match (list 1 2 3)
-				  ((list x) x)
-				  ((list a b) (+ a b))))
-  (assert-equal 'string
-				(match "test"
-				  ((? #'numberp) 'number)
-				  ((? #'stringp) 'string))))
-
-(run-tests)
 
 
 ;;; "shadchen" goes here. Hacks and glory await!
