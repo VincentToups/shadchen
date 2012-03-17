@@ -11,5 +11,5 @@
 	:description "A pattern matching library."
 	:long-description "Shadchen (matchmaker) is a Racket-inspired pattern matching library."
 	:components ((:file "package")
-		     (:file "shadchen")))
+				 (:file "shadchen")))
 

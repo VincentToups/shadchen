@@ -6,8 +6,6 @@
 
 (in-package #:shadchen)
 
-
-
 (defstruct match-fail-struct)
 
 (defvar *match-fail* (make-match-fail-struct))
@@ -73,16 +71,16 @@
 
   (defun match-and-expander* (sub-expressions match-name body)
 	(cond 
-	  ((not sub-expressions) `(progn ,@body))
+	  ((equal sub-expressions '(and*)) `(progn ,@body))
 	  (:otherwise 
-	   (let ((s1 (car sub-expressions)))
+	   (let ((s1 (cadr sub-expressions)))
 		 `(match1 ,s1 ,match-name 
-			(match1 (and ,@(cdr sub-expressions)) ,match-name ,@body))))))
+			(match1 (and* ,@(cddr sub-expressions)) ,match-name ,@body))))))
 
   (defun match-and-expander (match-expression match-value body)
 	(let ((name (gensym "MATCH-AND-EXPANDER-")))
 	  `(let ((,name ,match-value))
-		 ,(match-and-expander* (cdr match-expression) name body))))
+		 (match1 (and* ,@(cdr match-expression)) ,name ,@body))))
 
   (defun match-?-expander (match-expression match-value body)
 	(let ((name (gensym "MATCH-?-EXPANDER-NAME-"))
@@ -122,7 +120,7 @@ two terms, a function and a match against the result.  Got
   (defun extended-patternp (pattern-head) 
 	"Return T if PATTERN-HEAD indicates a user provided pattern."
 	(multiple-value-bind (val in) (gethash pattern-head *extended-patterns*)
-	(declare (ignore val))
+	  (declare (ignore val))
 	  in))
 
   (defun match-extended-pattern-expander (match-expression match-value body)
@@ -151,7 +149,7 @@ two terms, a function and a match against the result.  Got
 		 *match-fail*))
 
   (defun match-let-expander (match-expression match-value body)
-  (declare (ignore match-value))
+	(declare (ignore match-value))
 	`(let ,(cdr match-expression) ,@body))
 
   (defun match-or-expander (match-expression match-value body)
@@ -174,8 +172,10 @@ two terms, a function and a match against the result.  Got
 	(cond 
 	  ((not match-expression) `(if (not ,match-value) (progn ,@body) *match-fail*))
 	  ((non-keyword-symbol match-expression)
-	   `(let ((,match-expression ,match-value))
-		  ,@body))
+	   (if (eq match-expression '_)
+		   `(progn ,@body)
+		   `(let ((,match-expression ,match-value))
+			  ,@body)))
 	  ((keywordp match-expression) 
 	   (match-literal-keyword match-expression match-value body))
 	  ((stringp match-expression) 
@@ -190,6 +190,7 @@ two terms, a function and a match against the result.  Got
 		 (cons (match-cons-expander match-expression match-value body))
 		 (quote (match-quote-expander match-expression match-value body))
 		 (and (match-and-expander match-expression match-value body))
+		 (and* (match-and-expander* match-expression match-value body))
 		 (? (match-?-expander match-expression match-value body))
 		 (funcall (match-funcall-expander match-expression match-value body))
 		 (or (match-or-expander match-expression match-value body))
@@ -283,18 +284,16 @@ An error is thrown when no matches are found."
 (defpattern let1 (name value)
   `(let (,name ,value)))
 
-
-
-(let ((ht (make-hash-table :test #'equal)))
-  (labels ((add (key val) (setf (gethash key ht) val)))
-	(add :x 10)
-	(add :y (list 1 2))
-	(add :z 'a-value)
-	(match ht
-	  ((hash-table 
-		:x x
-		:y (list y z))
-	   (list x y z)))))
+;; (let ((ht (make-hash-table :test #'equal)))
+;;   (labels ((add (key val) (setf (gethash key ht) val)))
+;; 	(add :x 10)
+;; 	(add :y (list 1 2))
+;; 	(add :z 'a-value)
+;; 	(match ht
+;; 	  ((hash-table 
+;; 		:x x
+;; 		:y (list y z))
+;; 	   (list x y z)))))
 
 
 ;;; "shadchen" goes here. Hacks and glory await!
