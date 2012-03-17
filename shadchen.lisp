@@ -270,20 +270,31 @@ An error is thrown when no matches are found."
 			 ,(cadr f)))))
 
 (defpattern hash-table (&rest key/pat-pairs)
-  `(and (? #'hash-tablep)
+  `(and (? #'hash-table-p)
 		,@(named-let recur 
-		      ((pairs key/pat-pairs)
-		       (acc nil))
-		    (match pairs
-		      (nil (reverse acc))
-		      ((cons key (cons pat rest))
-		       (recur rest
-			      (cons `(funcall (htbl-fetch ,key) ,pat) acc)))))))
+					 ((pairs key/pat-pairs)
+					  (acc nil))
+					 (match pairs
+					   (nil (reverse acc))
+					   ((cons key (cons pat rest))
+						(recur rest
+							   (cons `(funcall (htbl-fetcher ,key) ,pat) acc)))))))
 
 (defpattern let1 (name value)
   `(let (,name ,value)))
 
 
+
+(let ((ht (make-hash-table :test #'equal)))
+  (labels ((add (key val) (setf (gethash key ht) val)))
+	(add :x 10)
+	(add :y (list 1 2))
+	(add :z 'a-value)
+	(match ht
+	  ((hash-table 
+		:x x
+		:y (list y z))
+	   (list x y z)))))
 
 
 ;;; "shadchen" goes here. Hacks and glory await!
