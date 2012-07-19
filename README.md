@@ -53,6 +53,10 @@ Built-in Patterns
 
 Shadchen supports the following built-in patterns.
 
+    _
+
+Matches anything, but no bindings are made.
+
     <SYMBOL>
 
 Matches anything, binding <SYMBOL> to that value in the body

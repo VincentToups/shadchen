@@ -1,9 +1,9 @@
 ;;;; package.lisp
 
 (defpackage #:shadchen
-  (:export :? :bq :list-rest :hash-table :struct :let1 
+  (:export :? :bq :p :list-rest :hash-table :struct :let1 
 		   :match :match-lambda :defpattern
-		   )
+		   :match-let :match-let* :match-loop)
   (:use #:cl))
 
 

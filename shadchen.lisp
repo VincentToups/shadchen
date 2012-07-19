@@ -191,7 +191,7 @@ two terms, a function and a match against the result.  Got
 		 (quote (match-quote-expander match-expression match-value body))
 		 (and (match-and-expander match-expression match-value body))
 		 (and* (match-and-expander* match-expression match-value body))
-		 (? (match-?-expander match-expression match-value body))
+		 ((? p) (match-?-expander match-expression match-value body))
 		 (funcall (match-funcall-expander match-expression match-value body))
 		 (or (match-or-expander match-expression match-value body))
 		 (bq (match-backquote-expander match-expression match-value body))
@@ -283,6 +283,54 @@ An error is thrown when no matches are found."
 
 (defpattern let1 (name value)
   `(let (,name ,value)))
+
+(defmacro match-let* (bindings &body body)
+  "Just like let* but each symbol part of each binding can be a match
+expression of arbitrary complexity."
+  (match bindings 
+	((list) `(progn ,@body))
+	((cons (list pattern value) rest-bindings)
+	 `(match ,value 
+		(,pattern 
+		 (match-let* ,rest-bindings ,@body))))))
+
+(defmacro match-let (bindings &body body)
+  "Just like let* but each symbol part of each binding can be a match
+expression of arbitrary complexity."
+  (let ((patterns (mapcar #'car bindings))
+		(values (mapcar #'cadr bindings)))
+	`(match (list ,@values)
+	   ((list ,@patterns) ,@body))))
+
+(defmacro match-loop (recur-point bindings &body body)
+  "Like match-let but the binding form can be re-entered by calling
+a local function indicated by `recur-point` with the same number of arguments
+as bindings expressions in BINDINGS."
+  (let ((args 
+		 (loop for i from 1 to (length bindings)
+			collect (gensym "match-loop-arg-")))
+		(patterns (mapcar #'car bindings))
+		(initial-values 
+		 (mapcar #'cadr bindings)))
+	`(labels ((,recur-point ,args
+				(match (list ,@args)
+				  ((list ,@patterns) ,@body))))
+	   (,recur-point ,@initial-values))))
+
+
+#|
+
+(match-let ((x 10) (y 11)) (list x y))
+
+(match-loop rec 
+	(((list x y) (list 0 0)))
+  (if (< (+ x y) 100) 
+	  (rec (list (+ x 1) (+ y x)))
+	  (list x y)))
+
+(match (list 1 2) (x x))
+
+|#
 
 ;; (let ((ht (make-hash-table :test #'equal)))
 ;;   (labels ((add (key val) (setf (gethash key ht) val)))
