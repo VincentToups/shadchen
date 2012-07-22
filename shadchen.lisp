@@ -173,7 +173,7 @@ two terms, a function and a match against the result.  Got
 	  ((not match-expression) `(if (not ,match-value) (progn ,@body) *match-fail*))
 	  ((non-keyword-symbol match-expression)
 	   (if (eq match-expression '_)
-		   `(progn ,@body)
+		   `(progn ,match-value ,@body)
 		   `(let ((,match-expression ,match-value))
 			  ,@body)))
 	  ((keywordp match-expression) 
