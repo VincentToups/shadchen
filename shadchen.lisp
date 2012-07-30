@@ -204,9 +204,9 @@ two terms, a function and a match against the result.  Got
   (defmacro match-helper (value &body forms)
 	(assert (symbolp value)
 			(value)
-			"MATCH-HELPER: VALUE must be a symbol!  Got ~a." value)
+			"MATCH-HELPER: VALUE must be a symbol.  Got ~a." value)
 	(cond 
-	  ((not forms) `(error "No Match for ~a!" ,value))
+	  ((not forms) `(error "No Match for ~s." ,value))
 	  ((listp forms)
 	   (let ((first-form (car forms)))
 		 (assert (and (listp first-form)
