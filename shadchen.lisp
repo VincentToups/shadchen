@@ -389,6 +389,48 @@ as bindings expressions in BINDINGS."
 				  ((list ,@patterns) ,@body))))
 	   (,recur-point ,@initial-values))))
 
+(defvar *match-function-table* (make-hash-table))
+(defun extend-defun-match-table (name lexpr)
+  (let ((c (reverse (gethash name *match-function-table*))))
+	(setf (gethash name *match-function-table*)
+		  (reverse (cons lexpr c)))))
+
+(defmacro defun-match- (name patterns &body body)
+  (let ((args (gensym))
+		(funs (gensym))
+		(fun (gensym))
+		(rval (gensym))
+		(loopf (gensym))
+		(compound-name (intern (format nil "~S (~S)" name patterns)))
+		(doc-string (if (stringp (car body)) (car body) "")))
+		`(progn 
+		   (defun ,name (&rest ,args)
+			 (named-let ,loopf ((,funs (gethash ',name *match-function-table*)))
+			   (if (null ,funs)
+				   (error "~S: match fail for ~S." ',name ,args)
+				   (let* ((,fun (car ,funs))
+						  (,funs (cdr ,funs))
+						  (,rval (apply ,fun ,args)))
+					 (if (eq *match-fail* ,rval)
+						 (,loopf ,funs)
+						 ,rval)))))
+		   (defun ,compound-name (&rest ,args)
+			 ,doc-string
+			 (match1 (list ,@patterns) ,args ,@body))
+		   (setf (gethash ',name *match-function-table*)
+				 (list #',compound-name)))))
+
+(defmacro defun-match (name patterns &body body)
+  (let ((compound-name (intern (format nil "~S (~S)" name patterns)))
+		(args (gensym))
+		(doc-string (if (stringp (car body)) (car body) "")))
+	`(progn 
+	   (defun ,compound-name (&rest ,args)
+		 ,doc-string
+		 (match1 (list ,@patterns) ,args
+		   ,@body))
+	   (extend-defun-match-table ',name #',compound-name))))
+
 #|
 
 (match 'y 
@@ -396,7 +438,17 @@ as bindings expressions in BINDINGS."
 		(must-match 'z a (format nil "Failed, but got ~S" a)))
    :hey))
 
-(match-let ((x 10) (y 11)) (list x y))
+(defun-match- my-prod (anything)
+  (my-prod anything 1))
+(defun-match my-prod (nil acc)
+  acc)
+(defun-match my-prod ((list (must-match x f (format nil "failed on ~s" f)) (tail rest)) acc)
+  (my-prod rest (* acc x)))
+(my-prod '(1 2 3 4))
+
+
+
+(match1 (list (must-match (number x)) (tail tl)) '(1 2 3) tl)
 
 (match-loop rec 
 	(((list x y) (list 0 0)))
