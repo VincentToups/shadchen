@@ -160,12 +160,59 @@ two terms, a function and a match against the result.  Got
 	   (let* ((forms (cdr match-expression))
 			  (form (car forms))
 			  (rest (cdr forms))
-			  (nm (gensym "MATCH-OR-EXPANDER-NM-")))
-		 `(let* ((,nm ,match-value)
-				 (result (match1 ,form ,nm ,@body)))
-			(if (not (eq *match-fail* result))
-				result
-				(match1 (or ,@rest) ,nm ,@body)))))))
+			  (nm (gensym "MATCH-OR-EXPANDER-NM-"))
+			  (result (gensym "result")))
+		 `(let* ((,nm ,match-value))
+			(multiple-value-bind (&rest ,result) (match1 ,form ,nm ,@body)
+			  (if (not (eq *match-fail* (car ,result)))
+				  (values-list ,result)
+				  (match1 (or ,@rest) ,nm ,@body))))))))
+
+;;;
+
+  (defun must-match-case (match-expr)
+	(cond 
+	  ((and (listp match-expr)
+			(= 2 (length match-expr)))
+	   :pattern-only)
+	  ((and (listp match-expr)
+			(= 4 (length match-expr)))
+	   :pattern+)
+	  (t :unrecognized)))
+
+  (defun match-must-match-expander (match-expr val-expr body)
+	(let ((value (gensym "value-")))
+	  (case (must-match-case match-expr)
+		(:pattern-only 
+		 (destructuring-bind (_ pattern) match-expr
+		   (declare (ignore _))
+		   (let ((sym (gensym))) 
+			 (match-must-match-expander `(must-match ,pattern ,sym (format nil ,(format nil "must-match pattern (~S) failed to match ~~S" pattern) ,sym))
+										val-expr body))))
+		(:pattern+
+		 (destructuring-bind (_ pattern fail-pattern message-expression) match-expr
+		   (declare (ignore _))
+		   (let ((match-result (gensym))
+				 (error-value (gensym)))
+			 `(let* ((,value ,val-expr)
+					 (,match-result 
+					  (match1 ,pattern ,value ,@body)))
+				(if (eq ,match-result *match-fail*)
+					(match ,value 
+					  (,fail-pattern (let ((,error-value ,message-expression))
+									   (if (stringp ,error-value)
+										   (error ,error-value)
+										   (error "~S" ,error-value))))
+					  (,(gensym)
+						(error 
+						 (format nil
+								 ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
+										  pattern fail-pattern) 
+								 ,value))))
+					,match-result)))))
+		(t (error "Unrecognized must-match pattern form ~S" match-expr)))))
+
+;;;
 
 
   (defmacro match1 (match-expression match-value &body body)
@@ -186,6 +233,7 @@ two terms, a function and a match against the result.  Got
 	   (match-extended-pattern-expander match-expression match-value body))
 	  ((listp match-expression)
 	   (case (car match-expression)
+		 (must-match (match-must-match-expander match-expression match-value body))
 		 (list (match-list-expander match-expression match-value body))
 		 (cons (match-cons-expander match-expression match-value body))
 		 (quote (match-quote-expander match-expression match-value body))
@@ -253,6 +301,23 @@ An error is thrown when no matches are found."
 			  (funcall #'cdr 
 					   (list-rest ,@pats))))))
 
+(defpattern number (&optional (pattern (gensym)))
+  `(p #'numberp ,pattern))
+
+(defpattern symbol (&optional (pattern (gensym)))
+  `(p #'symbolp ,pattern))
+
+(defpattern non-kw-symbol (&optional (pattern (gensym)))
+  (let ((val (gensym)))
+	`(p #'(lambda (,val)
+			(and (symbolp ,val)
+				 (not (keywordp ,val))))
+		,pattern)))
+
+(defpattern keyword (&optional (pattern (gensym)))
+  `(p #'keywordp ,pattern))
+
+
 (defun htbl-fetcher (key)
   #'(lambda (htbl) (gethash key htbl)))
 
@@ -317,8 +382,12 @@ as bindings expressions in BINDINGS."
 				  ((list ,@patterns) ,@body))))
 	   (,recur-point ,@initial-values))))
 
-
 #|
+
+(match 'y 
+  ((and (symbol x) 
+		(must-match 'z a (format nil "Failed, but got ~S" a)))
+   :hey))
 
 (match-let ((x 10) (y 11)) (list x y))
 
