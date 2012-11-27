@@ -20,6 +20,13 @@
   (defun match-list-expander* (sub-expressions match-value body)
 	(cond 
 	  ((not sub-expressions) `(if (not ,match-value) (progn ,@body) *match-fail*))
+	  ((and (listp sub-expressions)
+			(= 1 (length sub-expressions))
+			(listp (car sub-expressions))
+			(= 2 (length (car sub-expressions)))
+			(eq 'tail (car (car sub-expressions))))
+	   (let ((pattern (cadr (car sub-expressions))))
+		 `(match1 ,pattern ,match-value ,@body)))
 	  (:otherwise
 	   (let ((first-expression (car sub-expressions))
 			 (list-name (gensym "MATCH-LIST-EXPANDER*-")))
@@ -398,6 +405,9 @@ as bindings expressions in BINDINGS."
 	  (list x y)))
 
 (match (list 1 2) (x x))
+
+(match (list 1 2 3 4)
+  ((list a b (tail c)) c))
 
 |#
 
