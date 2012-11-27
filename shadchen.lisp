@@ -203,7 +203,7 @@ two terms, a function and a match against the result.  Got
 				 (error-value (gensym)))
 			 `(let* ((,value ,val-expr)
 					 (,match-result 
-					  (match1 ,pattern ,value ,@body)))
+					  (match1 ,pattern ,value :other-than-match-fail)))
 				(if (eq ,match-result *match-fail*)
 					(match ,value 
 					  (,fail-pattern (let ((,error-value ,message-expression))
@@ -216,7 +216,7 @@ two terms, a function and a match against the result.  Got
 								 ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
 										  pattern fail-pattern) 
 								 ,value))))
-					,match-result)))))
+					(match1 ,pattern ,value ,@body))))))
 		(t (error "Unrecognized must-match pattern form ~S" match-expr)))))
 
 ;;;
