@@ -242,7 +242,7 @@ two terms, a function and a match against the result.  Got
 	   (match-extended-pattern-expander match-expression match-value body))
 	  ((listp match-expression)
 	   (case (car match-expression)
-		 (must-match (match-must-match-expander match-expression match-value body))
+		 ((! must-match) (match-must-match-expander match-expression match-value body))
 		 (list (match-list-expander match-expression match-value body))
 		 (cons (match-cons-expander match-expression match-value body))
 		 (quote (match-quote-expander match-expression match-value body))
