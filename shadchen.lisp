@@ -168,11 +168,13 @@ two terms, a function and a match against the result.  Got
 			  (form (car forms))
 			  (rest (cdr forms))
 			  (nm (gensym "MATCH-OR-EXPANDER-NM-"))
+			  (result-values-list (gensym "result-values-list-"))
 			  (result (gensym "result")))
 		 `(let* ((,nm ,match-value))
-			(multiple-value-bind (&rest ,result) (match1 ,form ,nm ,@body)
-			  (if (not (eq *match-fail* (car ,result)))
-				  (values-list ,result)
+			(let* ((,result-values-list (multiple-value-list (match1 ,form ,nm ,@body)))
+				   (,result (car ,result-values-list))) 
+			  (if (not (eq *match-fail* ,result))
+				  (apply #'values ,result-values-list)
 				  (match1 (or ,@rest) ,nm ,@body))))))))
 
 ;;;
@@ -271,10 +273,11 @@ two terms, a function and a match against the result.  Got
 and an expression to evaluate on match. Got ~a instead." first-form)
 		 (let ((match-expression (car first-form))
 			   (match-body-exprs (cdr first-form))
-			   (result-name (gensym "MATCH-HELPER-RESULT-NAME-")))
-		   `(let ((,result-name 
-				   (match1 ,match-expression ,value ,@match-body-exprs)))
-			  (if (not (eq *match-fail* ,result-name)) ,result-name
+			   (result-name (gensym "MATCH-HELPER-RESULT-NAME-"))
+			   (result-values-name (gensym "MATCH-HELPER-RESULT-VALUES-NAME-")))
+		 `(let* ((,result-values-name (multiple-value-list (match1 ,match-expression ,value ,@match-body-exprs)))
+				 (,result-name (car ,result-values-name)))
+			(if (not (eq *match-fail* ,result-name)) (apply #'values ,result-values-name)
 				  (match-helper ,value ,@(cdr forms)))))))))
 
 
