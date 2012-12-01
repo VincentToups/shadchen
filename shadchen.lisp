@@ -141,17 +141,17 @@ two terms, a function and a match against the result.  Got
 		   #'(lambda ,args ,@body)))
 
   (defun match-literal-string (match-expression match-value body)
-	`(if (string= ,match-expression ,match-value) 
+	`(if (equalp ,match-expression ,match-value) 
 		 (progn ,@body)
 	   *match-fail*))
 
   (defun match-literal-number (match-expression match-value body)
-	`(if (= ,match-expression ,match-value)
+	`(if (equalp ,match-expression ,match-value)
 		 (progn ,@body)
 	   *match-fail*))
 
   (defun match-literal-keyword (match-expression match-value body)
-	`(if (eq ,match-expression ,match-value)
+	`(if (equalp ,match-expression ,match-value)
 		 (progn ,@body)
 	   *match-fail*))
 
@@ -287,37 +287,48 @@ by that expression."
 	   :pattern+)
 	  (t :unrecognized)))
 
-  (defun match-must-match-expander (match-expr val-expr body)
-	(let ((value (gensym "value-")))
-	  (case (must-match-case match-expr)
-		(:pattern-only 
-		 (destructuring-bind (_ pattern) match-expr
-		   (declare (ignore _))
-		   (let ((sym (gensym))) 
-			 (match-must-match-expander `(must-match ,pattern ,sym (format nil ,(format nil "must-match pattern (~S) failed to match ~~S" pattern) ,sym))
-										val-expr body))))
-		(:pattern+
-		 (destructuring-bind (_ pattern fail-pattern message-expression) match-expr
-		   (declare (ignore _))
-		   (let ((match-result (gensym))
-				 (error-value (gensym)))
-			 `(let* ((,value ,val-expr)
-					 (,match-result 
-					  (match1 ,pattern ,value :other-than-match-fail)))
-				(if (eq ,match-result *match-fail*)
-					(match ,value 
-					  (,fail-pattern (let ((,error-value ,message-expression))
-									   (if (stringp ,error-value)
-										   (error ,error-value)
-										   (error "~S" ,error-value))))
-					  (,(gensym)
-						(error 
-						 (format nil
-								 ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
-										  pattern fail-pattern) 
-								 ,value))))
-					(match1 ,pattern ,value ,@body))))))
-		(t (error "Unrecognized must-match pattern form ~S" match-expr)))))
+(defun must-match-expander (match-expr val-expr body)
+  (let ((value (gensym "value-")))
+	(case (must-match-case match-expr)
+	  (:pattern-only 
+	   (destructuring-bind (_ pattern) match-expr
+		 (let ((sym (gensym))) 
+		   (match-must-match-expander 
+			`(must-match 
+			  ,pattern 
+			  ,sym 
+			  (format ,(format "must-match pattern (~S) failed to match ~~S" pattern) 
+					  ,sym))
+			val-expr body))))
+ 	  (:pattern+
+	   (destructuring-bind (_ pattern fail-pattern message-expression) match-expr
+		 (let ((match-result (gensym))
+			   (value (gensym))
+			   (success-flag (gensym))
+			   (bound-symbols (calc-pattern-bindings pattern))
+			   (actual-pattern 
+				`(or (and ,value 
+						  ,pattern (let1 ,success-flag t))
+					 (and ,value 
+						  (let ,(loop for b in bound-symbols collect 
+									  `(,b :dummy-value))
+							(,success-flag nil))))))
+		   `(match ,val-expr 
+				   (,actual-pattern 
+					(if ,success-flag 
+						(progn ,@body)
+					  (match ,value 
+						 (,fail-pattern (let ((,value ,message-expression))
+										  (if (stringp ,value)
+											  (error ,value)
+											(error "~S" ,value))))
+						   (,(gensym)
+							(error 
+							 (format 
+							  ,(format "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
+									   pattern fail-pattern) 
+							  ,value))))))))))
+	  (t (error "Unrecognized must-match pattern form ~S" match-expr)))))
 
 ;;;
 

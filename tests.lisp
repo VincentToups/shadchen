@@ -20,6 +20,19 @@
 				   ((list a b c d e f g (tail the-tail))
 					the-tail)))))
 
-(eos:test list)
+(eos:test numeric-literal
+  (eos:is (equal 
+		   :matched (match 10
+					  (11 :did-not-match)
+					  (10 :matched)))))
+
+(eos:test string-literal
+  (eos:is (equal 
+		   :matched (match "cat"
+					  (15 :did-not-match)
+					  ("cat" :matched)))))
+
+
+
 
 (eos:run!)
