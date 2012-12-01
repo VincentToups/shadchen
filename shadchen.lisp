@@ -287,27 +287,27 @@ by that expression."
 	   :pattern+)
 	  (t :unrecognized)))
 
-(defun must-match-expander (match-expr val-expr body)
-  (let ((value (gensym "value-")))
-	(case (must-match-case match-expr)
-	  (:pattern-only 
-	   (destructuring-bind (_ pattern) match-expr
-		 (let ((sym (gensym))) 
-		   (match-must-match-expander 
-			`(must-match 
-			  ,pattern 
-			  ,sym 
-			  (format ,(format "must-match pattern (~S) failed to match ~~S" pattern) 
-					  ,sym))
-			val-expr body))))
- 	  (:pattern+
-	   (destructuring-bind (_ pattern fail-pattern message-expression) match-expr
-		 (let ((match-result (gensym))
-			   (value (gensym))
-			   (success-flag (gensym))
-			   (bound-symbols (calc-pattern-bindings pattern))
-			   (actual-pattern 
-				`(or (and ,value 
+  (defun must-match-expander (match-expr val-expr body)
+	(let ((value (gensym "value-")))
+	  (case (must-match-case match-expr)
+		(:pattern-only 
+		 (destructuring-bind (_ pattern) match-expr
+		   (let ((sym (gensym))) 
+			 (match-must-match-expander 
+			  `(must-match 
+				,pattern 
+				,sym 
+				(format nil ,(format nil "must-match pattern (~S) failed to match ~~S" pattern) 
+						,sym))
+			  val-expr body))))
+		(:pattern+
+		 (destructuring-bind (_ pattern fail-pattern message-expression) match-expr
+		   (let* ((match-result (gensym))
+				  (value (gensym))
+				  (success-flag (gensym))
+				  (bound-symbols (calc-pattern-bindings pattern))
+				  (actual-pattern 
+				   `(or (and ,value 
 						  ,pattern (let1 ,success-flag t))
 					 (and ,value 
 						  (let ,(loop for b in bound-symbols collect 
@@ -324,8 +324,8 @@ by that expression."
 											(error "~S" ,value))))
 						   (,(gensym)
 							(error 
-							 (format 
-							  ,(format "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
+							 (format nil
+							  ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
 									   pattern fail-pattern) 
 							  ,value))))))))))
 	  (t (error "Unrecognized must-match pattern form ~S" match-expr)))))
