@@ -5,7 +5,7 @@
 
 (asdf:defsystem #:shadchen
 	:serial t
-	:depends-on ()
+	:depends-on ("eos")
 	:author "Vincent Toups"
 	:maintainer "Vincent Toups"
 	:description "A pattern matching library."
