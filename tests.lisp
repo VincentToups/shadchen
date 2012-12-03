@@ -160,4 +160,11 @@
 			((must-match (number x))
 			 x)))))
 
+(eos:test must-match-fail-case
+  (eos:signals (simple-error)
+   (equal :x 
+		  (match :x
+			((must-match (number x))
+			 x)))))
+
 (eos:run!)
