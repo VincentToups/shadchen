@@ -34,9 +34,9 @@
 			(if (and (listp ,list-name)
 					 ,list-name)
 				(match1 ,first-expression (car ,list-name)
-						(match1 (list ,@(cdr sub-expressions)) (cdr ,list-name) 
-								,@body))
-			  *match-fail*))))))
+				  (match1 (list ,@(cdr sub-expressions)) (cdr ,list-name) 
+					,@body))
+				*match-fail*))))))
 
   (defun match-list-expander (match-expression match-value body)
 	(match-list-expander* (cdr match-expression) match-value body))
@@ -49,33 +49,34 @@
 	  `(let ((,name ,match-value))
 		 (if (listp ,name)
 			 (match1 ,car-match (car ,name)
-					 (match1 ,cdr-match (cdr ,name)
-							 ,@body))
+			   (match1 ,cdr-match (cdr ,name)
+				 ,@body))
 			 *match-fail*))))
 
   (defun match-quote-expander (match-expression match-value body)
 	`(if (equalp ,match-expression ,match-value) (progn ,@body) *match-fail*))
 
-  (defun match-backquote-expander (match-expression match-value body)
-	(let ((datum (cadr match-expression)))
+  (defun uq? (e)
+	(and (listp e)
+		 (eq (car e) 'uq)))
+
+  (defun bq->regular-match (bq-expression)
+	(let ((sub-expr (cadr bq-expression)))
 	  (cond 
-		((not datum) `(progn ,@body))
-		((and (listp datum)
-			  (eq (car datum) 'uq))
-		 (let ((sub-match (cadr datum)))
-		   `(match1 ,sub-match ,match-value ,@body)))
-		((listp datum)
-		 (let ((first-qt (car datum))
-			   (rest-bq (cdr datum))
-			   (name (gensym "MATCH-BACKQUOTE-EXPANDER-")))
-		   `(let ((,name ,match-value))
-			  (if (and ,name
-					   (listp ,name))
-				  (match1 (bq ,first-qt) (car ,name)
-					(match1 (bq ,rest-bq) (cdr ,name) ,@body))
-				  *match-fail*))))
-		(:otherwise 
-		 `(match1 ',datum ,match-value ,@body)))))
+		((uq? sub-expr)
+		 `(quote ,(cadr sub-expr)))
+		((listp sub-expr)
+		 `(list ,@(mapcar 
+				   (lambda (expr)
+					 (cond ((uq? expr)
+							(cadr expr))
+						   (t `(quote ,expr))))
+				   sub-expr)))
+		(t
+		 sub-expr))))
+
+  (defun match-backquote-expander (match-expression match-value body)
+	`(match1 ,(bq->regular-match match-expression) ,match-value ,@body))
 
   (defun match-and-expander* (sub-expressions match-name body)
 	(cond 
@@ -244,55 +245,56 @@ by that expression."
 		 ((! must-match string number keyword non-keyword-symbol) (calc-pattern-bindings (cadr expr)))
 		 (one-of (calc-pattern-bindings (cadr expr)))
 		 (let (mapcar #'car (cdr expr)))
-		 (t (error "calc-pattern-bindings: unrecognized pattern ~S." expr))))
-	  (t
-	   (error "calc-pattern-bindings: unrecognized pattern ~S." expr))))
+		 (t (error "calc-pattern-bindings: unrecognized pattern ~S." expr))))))
 
-  (defun symbol< (s1 s2)
-	(let ((p1 (package-name (symbol-package s1)))
-		  (n1 (symbol-name s1))
-		  (p2 (package-name (symbol-package s2)))
-		  (n2 (symbol-name s2)))
-	  (if (equal p1 p2)
-		  (string< n1 n2)
-		  (string< p1 p2))))
+  (defun package-name* (p)
+	(if p (package-name p) "no-package-66b73c7f8e8bfa094fa23b4264978ed1"))
 
-  (defun canonical-binding-list (l)
-	(sort l #'symbol<))
+	(defun symbol< (s1 s2)
+	  (let ((p1 (package-name* (symbol-package s1)))
+			(n1 (symbol-name s1))
+			(p2 (package-name* (symbol-package s2)))
+			(n2 (symbol-name s2)))
+		(if (equal p1 p2)
+			(string< n1 n2)
+			(string< p1 p2))))
 
-  (defun equal-by-binding2 (p1 p2)
-	(equal (canonical-binding-list 
-			(calc-pattern-bindings p1))
-		   (canonical-binding-list 
-			(calc-pattern-bindings p2))))
+	(defun canonical-binding-list (l)
+	  (sort l #'symbol<))
 
-  (defun equal-by-binding (&rest patterns)
-	(cond 
-	  ((= 1 (length patterns)) t)
-	  ((= 2 (length patterns))
-	   (equal-by-binding2 (car patterns) (cadr patterns)))
-	  (t
-	   (and (equal-by-binding2 (car patterns) (cadr patterns))
-			(apply #'equal-by-binding (cdr patterns))))))
+	(defun equal-by-binding2 (p1 p2)
+	  (equal (canonical-binding-list 
+			  (calc-pattern-bindings p1))
+			 (canonical-binding-list 
+			  (calc-pattern-bindings p2))))
+
+	(defun equal-by-binding (&rest patterns)
+	  (cond 
+		((= 1 (length patterns)) t)
+		((= 2 (length patterns))
+		 (equal-by-binding2 (car patterns) (cadr patterns)))
+		(t
+		 (and (equal-by-binding2 (car patterns) (cadr patterns))
+			  (apply #'equal-by-binding (cdr patterns))))))
 
 
 ;;;
 
-  (defun must-match-case (match-expr)
-	(cond 
-	  ((and (listp match-expr)
-			(= 2 (length match-expr)))
-	   :pattern-only)
-	  ((and (listp match-expr)
-			(= 4 (length match-expr)))
-	   :pattern+)
-	  (t :unrecognized)))
+	(defun must-match-case (match-expr)
+	  (cond 
+		((and (listp match-expr)
+			  (= 2 (length match-expr)))
+		 :pattern-only)
+		((and (listp match-expr)
+			  (= 4 (length match-expr)))
+		 :pattern+)
+		(t :unrecognized)))
 
-  (defun match-must-match-expander (match-expr val-expr body)
-	(let ((value (gensym "value-")))
+	(defun match-must-match-expander (match-expr val-expr body)
 	  (case (must-match-case match-expr)
 		(:pattern-only 
 		 (destructuring-bind (_ pattern) match-expr
+		   (declare (ignore _))
 		   (let ((sym (gensym))) 
 			 (match-must-match-expander 
 			  `(must-match 
@@ -303,16 +305,16 @@ by that expression."
 			  val-expr body))))
 		(:pattern+
 		 (destructuring-bind (_ pattern fail-pattern message-expression) match-expr
-		   (let* ((match-result (gensym))
-				  (value (gensym))
+		   (declare (ignore _))
+		   (let* ((value (gensym))
 				  (success-flag (gensym))
 				  (bound-symbols (calc-pattern-bindings pattern))
 				  (actual-pattern 
 				   `(or (and ,value 
 							 ,pattern (let1 ,success-flag t))
 						(and ,value 
-							 (let ,(loop for b in bound-symbols collect 
-										`(,b :dummy-value))
+							 (let ,@(loop for b in bound-symbols collect 
+										 `(,b :dummy-value))
 							   (,success-flag nil))))))
 			 `(match ,val-expr 
 				(,actual-pattern 
@@ -329,121 +331,125 @@ by that expression."
 								  ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
 										   pattern fail-pattern) 
 								  ,value))))))))))
-		(t (error "Unrecognized must-match pattern form ~S" match-expr)))))
+		(t (error "Unrecognized must-match pattern form ~S" match-expr))))
 
 ;;;
 
 
-  (defmacro match1 (match-expression match-value &body body)
-	(cond 
-	  ((not match-expression) `(if (not ,match-value) (progn ,@body) *match-fail*))
-	  ((non-keyword-symbol match-expression)
-	   (if (eq match-expression '_)
-		   `(progn ,match-value ,@body)
-		   `(let ((,match-expression ,match-value))
-			  ,@body)))
-	  ((keywordp match-expression) 
-	   (match-literal-keyword match-expression match-value body))
-	  ((stringp match-expression) 
-	   (match-literal-string match-expression match-value body))
-	  ((numberp match-expression)
-	   (match-literal-number match-expression match-value body))
-	  ((extended-patternp (car match-expression)) 
-	   (match-extended-pattern-expander match-expression match-value body))
-	  ((listp match-expression)
-	   (case (car match-expression)
-		 ((! must-match) (match-must-match-expander match-expression match-value body))
-		 (list (match-list-expander match-expression match-value body))
-		 (cons (match-cons-expander match-expression match-value body))
-		 (quote (match-quote-expander match-expression match-value body))
-		 (and (match-and-expander match-expression match-value body))
-		 (and* (match-and-expander* match-expression match-value body))
-		 ((? p) (match-?-expander match-expression match-value body))
-		 (funcall (match-funcall-expander match-expression match-value body))
-		 (or (match-or-expander match-expression match-value body))
-		 (bq (match-backquote-expander match-expression match-value body))
-		 (values (match-values-expander match-expression match-value body))
-		 (let (match-let-expander match-expression match-value body))
-		 (otherwise (error "MATCH1: Unrecognized match-expression ~a" match-expression))))
-	  (:otherwise
-	   (error "MATCH1: Unrecognized match-expression ~a" match-expression))))
+	(defmacro match1 (match-expression match-value &body body)
+	  (cond 
+		((not match-expression) `(if (not ,match-value) (progn ,@body) *match-fail*))
+		((non-keyword-symbol match-expression)
+		 (if (or (eq match-expression '_)
+				 (eq match-expression '-ignore-))
+			 `(progn ,match-value ,@body)
+			 `(let ((,match-expression ,match-value))
+				,@body)))
+		((keywordp match-expression) 
+		 (match-literal-keyword match-expression match-value body))
+		((stringp match-expression) 
+		 (match-literal-string match-expression match-value body))
+		((numberp match-expression)
+		 (match-literal-number match-expression match-value body))
+		((extended-patternp (car match-expression)) 
+		 (match-extended-pattern-expander match-expression match-value body))
+		((listp match-expression)
+		 (case (car match-expression)
+		   ((! must-match) (match-must-match-expander match-expression match-value body))
+		   (list (match-list-expander match-expression match-value body))
+		   (cons (match-cons-expander match-expression match-value body))
+		   (quote (match-quote-expander match-expression match-value body))
+		   (and (match-and-expander match-expression match-value body))
+		   (and* (match-and-expander* match-expression match-value body))
+		   ((? p) (match-?-expander match-expression match-value body))
+		   (funcall (match-funcall-expander match-expression match-value body))
+		   (or (match-or-expander match-expression match-value body))
+		   (bq (match-backquote-expander match-expression match-value body))
+		   (values (match-values-expander match-expression match-value body))
+		   (let (match-let-expander match-expression match-value body))
+		   (otherwise (error "MATCH1: Unrecognized match-expression ~a" match-expression))))
+		(:otherwise
+		 (error "MATCH1: Unrecognized match-expression ~a" match-expression))))
 
-  (defmacro match-helper (value &body forms)
-	(assert (symbolp value)
-			(value)
-			"MATCH-HELPER: VALUE must be a symbol.  Got ~a." value)
-	(cond 
-	  ((not forms) `(error "No Match for ~s." ,value))
-	  ((listp forms)
-	   (let ((first-form (car forms)))
-		 (assert (and (listp first-form)
-					  (> (length first-form) 1))
-				 (first-form)
-				 "Each MATCH SUB-FORM must be at least two elements long, a matcher
+	(defmacro match-helper (value &body forms)
+	  (assert (symbolp value)
+			  (value)
+			  "MATCH-HELPER: VALUE must be a symbol.  Got ~a." value)
+	  (cond 
+		((not forms) `(error "No Match for ~s." ,value))
+		((listp forms)
+		 (let ((first-form (car forms)))
+		   (assert (and (listp first-form)
+						(> (length first-form) 1))
+				   (first-form)
+				   "Each MATCH SUB-FORM must be at least two elements long, a matcher
 and an expression to evaluate on match. Got ~a instead." first-form)
-		 (let ((match-expression (car first-form))
-			   (match-body-exprs (cdr first-form))
-			   (result-name (gensym "MATCH-HELPER-RESULT-NAME-"))
-			   (result-values-name (gensym "MATCH-HELPER-RESULT-VALUES-NAME-")))
-		   `(let* ((,result-values-name (multiple-value-list (match1 ,match-expression ,value ,@match-body-exprs)))
-				   (,result-name (car ,result-values-name)))
-			  (if (not (eq *match-fail* ,result-name)) (apply #'values ,result-values-name)
-				  (match-helper ,value ,@(cdr forms)))))))))
+		   (let ((match-expression (car first-form))
+				 (match-body-exprs (cdr first-form))
+				 (result-name (gensym "MATCH-HELPER-RESULT-NAME-"))
+				 (result-values-name (gensym "MATCH-HELPER-RESULT-VALUES-NAME-")))
+			 `(let* ((,result-values-name (multiple-value-list (match1 ,match-expression ,value ,@match-body-exprs)))
+					 (,result-name (car ,result-values-name)))
+				(if (not (eq *match-fail* ,result-name)) (apply #'values ,result-values-name)
+					(match-helper ,value ,@(cdr forms)))))))))
 
 
-  (defmacro match (value &body forms)
-	"Attempt to match VALUE against each of the patterns in the CAR of
+	(defmacro match (value &body forms)
+	  "Attempt to match VALUE against each of the patterns in the CAR of
 FORMS.  When a match is detected, its subsequent forms are executed as
 in a PROGN where the bindings implied by the match are in effect.  
 
 An error is thrown when no matches are found."
-	(let ((name (gensym "MATCH-VALUE-NAME-")))
-	  `(let ((,name ,value)) 
-		 (match-helper ,name ,@forms))))
+	  (let ((name (gensym "MATCH-VALUE-NAME-")))
+		`(let ((,name ,value)) 
+		   (match-helper ,name ,@forms))))
 
 
-  (defmacro match-lambda (&body forms) 
-	"Like MATCH except the VALUE is curried."
-	(let ((name (gensym "MATCH-LAMBDA-NAME-")))
-	  `(function (lambda (,name) (match ,name ,@forms)))))
+	(defmacro match-lambda (&body forms) 
+	  "Like MATCH except the VALUE is curried."
+	  (let ((name (gensym "MATCH-LAMBDA-NAME-")))
+		`(function (lambda (,name) (match ,name ,@forms)))))
 
-  (defun length=1 (lst)
-	"Returns T when LST has one element."
-	(and (consp lst)
-		 (not (cdr lst)))))
+	(defun length=1 (lst)
+	  "Returns T when LST has one element."
+	  (and (consp lst)
+		   (not (cdr lst)))))
 
-(defpattern list-rest (&rest patterns)
-  (if (length=1 patterns)
-	  `(? #'listp ,(car patterns))
-	  (let ((pat (car patterns))
-			(pats (cdr patterns)))
-		`(and (funcall #'car ,pat)
-			  (funcall #'cdr 
-					   (list-rest ,@pats))))))
+  (defpattern list-rest (&rest patterns)
+	(if (length=1 patterns)
+		`(? #'listp ,(car patterns))
+		(let ((pat (car patterns))
+			  (pats (cdr patterns)))
+		  `(and (funcall #'car ,pat)
+				(funcall #'cdr 
+						 (list-rest ,@pats))))))
 
-(defpattern number (&optional (pattern '_))
-  `(p #'numberp ,pattern))
+  (defpattern number (&optional (pattern '_))
+	`(p #'numberp ,pattern))
 
-(defpattern symbol (&optional (pattern '_))
-  `(p #'symbolp ,pattern))
+  (defpattern symbol (&optional (pattern '_))
+	`(p #'symbolp ,pattern))
 
-(defpattern non-kw-symbol (&optional (pattern '_))
-  (let ((val (gensym)))
-	`(p #'(lambda (,val)
-			(and (symbolp ,val)
-				 (not (keywordp ,val))))
-		,pattern)))
+  (defpattern string (&optional (pattern '_))
+	`(p #'stringp ,pattern))
 
-(defpattern keyword (&optional (pattern '_))
-  `(p #'keywordp ,pattern))
+  (defpattern non-kw-symbol (&optional (pattern '_))
+	(let ((val (gensym)))
+	  `(p #'(lambda (,val)
+			  (and (symbolp ,val)
+				   (not (keywordp ,val))))
+		  ,pattern)))
+
+  (defpattern keyword (&optional (pattern '_))
+	`(p #'keywordp ,pattern))
 
 
-(defun htbl-fetcher (key)
-  #'(lambda (htbl) (gethash key htbl)))
+  (defun htbl-fetcher (key)
+	#'(lambda (htbl) (gethash key htbl)))
 
-(defmacro named-let (name binders &body body)
-  `(labels ((,name ,(mapcar #'car binders) ,@body))
-	 (,name ,@(mapcar #'cadr binders))))
+  (defmacro named-let (name binders &body body)
+	`(labels ((,name ,(mapcar #'car binders) ,@body))
+	   (,name ,@(mapcar #'cadr binders))))
 
 (defpattern struct (struct-name &rest fields)
   `(and
