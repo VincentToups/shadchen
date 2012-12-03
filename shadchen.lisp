@@ -50,7 +50,8 @@
 		 (if (listp ,name)
 			 (match1 ,car-match (car ,name)
 					 (match1 ,cdr-match (cdr ,name)
-							 ,@body))))))
+							 ,@body))
+			 *match-fail*))))
 
   (defun match-quote-expander (match-expression match-value body)
 	`(if (equalp ,match-expression ,match-value) (progn ,@body) *match-fail*))
@@ -58,31 +59,31 @@
   (defun match-backquote-expander (match-expression match-value body)
 	(let ((datum (cadr match-expression)))
 	  (cond 
-	   ((not datum) `(progn ,@body))
-	   ((and (listp datum)
-			 (eq (car datum) 'uq))
-		(let ((sub-match (cadr datum)))
-		  `(match1 ,sub-match ,match-value ,@body)))
-	   ((listp datum)
-		(let ((first-qt (car datum))
-			  (rest-bq (cdr datum))
-			  (name (gensym "MATCH-BACKQUOTE-EXPANDER-")))
-		  `(let ((,name ,match-value))
-			 (if (and ,name
-					  (listp ,name))
-				 (match1 (bq ,first-qt) (car ,name)
-						 (match1 (bq ,rest-bq) (cdr ,name) ,@body))
-			   *match-fail*))))
-	   (:otherwise 
-		`(match1 ',datum ,match-value ,@body)))))
+		((not datum) `(progn ,@body))
+		((and (listp datum)
+			  (eq (car datum) 'uq))
+		 (let ((sub-match (cadr datum)))
+		   `(match1 ,sub-match ,match-value ,@body)))
+		((listp datum)
+		 (let ((first-qt (car datum))
+			   (rest-bq (cdr datum))
+			   (name (gensym "MATCH-BACKQUOTE-EXPANDER-")))
+		   `(let ((,name ,match-value))
+			  (if (and ,name
+					   (listp ,name))
+				  (match1 (bq ,first-qt) (car ,name)
+					(match1 (bq ,rest-bq) (cdr ,name) ,@body))
+				  *match-fail*))))
+		(:otherwise 
+		 `(match1 ',datum ,match-value ,@body)))))
 
   (defun match-and-expander* (sub-expressions match-name body)
 	(cond 
-	 ((equal sub-expressions '(and*)) `(progn ,@body))
-	 (:otherwise 
-	  (let ((s1 (cadr sub-expressions)))
-		`(match1 ,s1 ,match-name 
-				 (match1 (and* ,@(cddr sub-expressions)) ,match-name ,@body))))))
+	  ((equal sub-expressions '(and*)) `(progn ,@body))
+	  (:otherwise 
+	   (let ((s1 (cadr sub-expressions)))
+		 `(match1 ,s1 ,match-name 
+			(match1 (and* ,@(cddr sub-expressions)) ,match-name ,@body))))))
 
   (defun match-and-expander (match-expression match-value body)
 	(let ((name (gensym "MATCH-AND-EXPANDER-")))
@@ -100,7 +101,7 @@
 		(2 `(let ((,name ,match-value)
 				  (,f-name ,(cadr match-expression)))
 			  (if (funcall ,f-name ,name) (match1 ,(elt match-expression 2) ,name ,@body)
-				*match-fail*)))
+				  *match-fail*)))
 		(otherwise
 		 (error "MATCH-?-EXPANDER: MATCH-?-EXPANDER takes only 1 or 2 arguments.")))))
 
@@ -143,17 +144,17 @@ two terms, a function and a match against the result.  Got
   (defun match-literal-string (match-expression match-value body)
 	`(if (equalp ,match-expression ,match-value) 
 		 (progn ,@body)
-	   *match-fail*))
+		 *match-fail*))
 
   (defun match-literal-number (match-expression match-value body)
 	`(if (equalp ,match-expression ,match-value)
 		 (progn ,@body)
-	   *match-fail*))
+		 *match-fail*))
 
   (defun match-literal-keyword (match-expression match-value body)
 	`(if (equalp ,match-expression ,match-value)
 		 (progn ,@body)
-	   *match-fail*))
+		 *match-fail*))
 
   (defun match-let-expander (match-expression match-value body)
 	(declare (ignore match-value))
@@ -161,21 +162,21 @@ two terms, a function and a match against the result.  Got
 
   (defun match-or-expander-unsafe (match-expression match-value body)
 	(cond 
-	 ((length=1 (cdr match-expression))
-	  `(match1 ,(cadr match-expression) ,match-value ,@body))
-	 (:otherwise
-	  (let* ((forms (cdr match-expression))
-			 (form (car forms))
-			 (rest (cdr forms))
-			 (nm (gensym "MATCH-OR-EXPANDER-NM-"))
-			 (result-values-list (gensym "result-values-list-"))
-			 (result (gensym "result")))
-		`(let* ((,nm ,match-value))
-		   (let* ((,result-values-list (multiple-value-list (match1 ,form ,nm ,@body)))
-				  (,result (car ,result-values-list))) 
-			 (if (not (eq *match-fail* ,result))
-				 (apply #'values ,result-values-list)
-			   (match1 (or ,@rest) ,nm ,@body))))))))
+	  ((length=1 (cdr match-expression))
+	   `(match1 ,(cadr match-expression) ,match-value ,@body))
+	  (:otherwise
+	   (let* ((forms (cdr match-expression))
+			  (form (car forms))
+			  (rest (cdr forms))
+			  (nm (gensym "MATCH-OR-EXPANDER-NM-"))
+			  (result-values-list (gensym "result-values-list-"))
+			  (result (gensym "result")))
+		 `(let* ((,nm ,match-value))
+			(let* ((,result-values-list (multiple-value-list (match1 ,form ,nm ,@body)))
+				   (,result (car ,result-values-list))) 
+			  (if (not (eq *match-fail* ,result))
+				  (apply #'values ,result-values-list)
+				  (match1 (or ,@rest) ,nm ,@body))))))))
 
   (defun match-or-expander (match-expression match-value body)
 	(assert (apply #'equal-by-binding (cdr match-expression))
@@ -287,7 +288,7 @@ by that expression."
 	   :pattern+)
 	  (t :unrecognized)))
 
-  (defun must-match-expander (match-expr val-expr body)
+  (defun match-must-match-expander (match-expr val-expr body)
 	(let ((value (gensym "value-")))
 	  (case (must-match-case match-expr)
 		(:pattern-only 
@@ -308,27 +309,27 @@ by that expression."
 				  (bound-symbols (calc-pattern-bindings pattern))
 				  (actual-pattern 
 				   `(or (and ,value 
-						  ,pattern (let1 ,success-flag t))
-					 (and ,value 
-						  (let ,(loop for b in bound-symbols collect 
-									  `(,b :dummy-value))
-							(,success-flag nil))))))
-		   `(match ,val-expr 
-				   (,actual-pattern 
-					(if ,success-flag 
-						(progn ,@body)
-					  (match ,value 
-						 (,fail-pattern (let ((,value ,message-expression))
-										  (if (stringp ,value)
-											  (error ,value)
+							 ,pattern (let1 ,success-flag t))
+						(and ,value 
+							 (let ,(loop for b in bound-symbols collect 
+										`(,b :dummy-value))
+							   (,success-flag nil))))))
+			 `(match ,val-expr 
+				(,actual-pattern 
+				 (if ,success-flag 
+					 (progn ,@body)
+					 (match ,value 
+					   (,fail-pattern (let ((,value ,message-expression))
+										(if (stringp ,value)
+											(error ,value)
 											(error "~S" ,value))))
-						   (,(gensym)
-							(error 
-							 (format nil
-							  ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
-									   pattern fail-pattern) 
-							  ,value))))))))))
-	  (t (error "Unrecognized must-match pattern form ~S" match-expr)))))
+					   (,(gensym)
+						 (error 
+						  (format nil
+								  ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
+										   pattern fail-pattern) 
+								  ,value))))))))))
+		(t (error "Unrecognized must-match pattern form ~S" match-expr)))))
 
 ;;;
 
@@ -420,20 +421,20 @@ An error is thrown when no matches are found."
 			  (funcall #'cdr 
 					   (list-rest ,@pats))))))
 
-(defpattern number (&optional (pattern (gensym)))
+(defpattern number (&optional (pattern '_))
   `(p #'numberp ,pattern))
 
-(defpattern symbol (&optional (pattern (gensym)))
+(defpattern symbol (&optional (pattern '_))
   `(p #'symbolp ,pattern))
 
-(defpattern non-kw-symbol (&optional (pattern (gensym)))
+(defpattern non-kw-symbol (&optional (pattern '_))
   (let ((val (gensym)))
 	`(p #'(lambda (,val)
 			(and (symbolp ,val)
 				 (not (keywordp ,val))))
 		,pattern)))
 
-(defpattern keyword (&optional (pattern (gensym)))
+(defpattern keyword (&optional (pattern '_))
   `(p #'keywordp ,pattern))
 
 

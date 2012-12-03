@@ -32,7 +32,35 @@
 					  (15 :did-not-match)
 					  ("cat" :matched)))))
 
+(eos:test keyword-literal
+  (eos:is (equal 
+		   :matched
+		   (match :x
+			 (15 :did-not-match)
+			 (:x :matched)))))
 
+(eos:test cons
+  (eos:is 
+   (equal '(b c)
+		  (match '(a b c)
+			(15 :did-not-match)
+			((cons a tail)
+			 tail)))))
+
+(eos:test quote
+  (eos:is 
+   (equal :matched
+		  (match 'x
+			((cons a b)
+			 :did-not-match)
+			('x :matched)))))
+
+(eos:test number1
+  (eos:is 
+   (equal :matched 
+		  (match 10
+			((symbol) :did-not-match)
+			((number) :matched)))))
 
 
 (eos:run!)
