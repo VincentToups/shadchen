@@ -306,31 +306,29 @@ by that expression."
 		(:pattern+
 		 (destructuring-bind (_ pattern fail-pattern message-expression) match-expr
 		   (declare (ignore _))
-		   (let* ((value (gensym))
-				  (success-flag (gensym))
-				  (bound-symbols (calc-pattern-bindings pattern))
-				  (actual-pattern 
-				   `(or (and ,value 
-							 ,pattern (let1 ,success-flag t))
-						(and ,value 
-							 (let ,@(loop for b in bound-symbols collect 
-										 `(,b :dummy-value))
-							   (,success-flag nil))))))
-			 `(match ,val-expr 
-				(,actual-pattern 
-				 (if ,success-flag 
-					 (progn ,@body)
-					 (match ,value 
-					   (,fail-pattern (let ((,value ,message-expression))
-										(if (stringp ,value)
-											(error ,value)
-											(error "~S" ,value))))
-					   (,(gensym)
-						 (error 
-						  (format nil
-								  ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
-										   pattern fail-pattern) 
-								  ,value))))))))))
+		   (let ((bound-symbols (calc-pattern-bindings pattern))
+			   (value (gensym))
+			   (result (gensym)))
+		   `(match1 (funcall 
+					 (lambda (,value)
+					   (let ((,result (match1 ,pattern ,value
+											  (list ,@bound-symbols))))
+						 (if (eq *match-fail* ,result)
+							 (match ,value 
+							   (,fail-pattern (let ((,value ,message-expression))
+												(if (stringp ,value)
+													(error ,value)
+													(error "~S" ,value))))
+							   (,(gensym)
+								 (error 
+								  (format nil
+										  ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
+												   pattern fail-pattern) 
+										  ,value))))
+							 ,result)))
+					 (list ,@bound-symbols))
+				,val-expr
+			  ,@body))))
 		(t (error "Unrecognized must-match pattern form ~S" match-expr))))
 
 ;;;
