@@ -162,9 +162,29 @@
 
 (eos:test must-match-fail-case
   (eos:signals (simple-error)
-   (equal :x 
-		  (match :x
-			((must-match (number x))
-			 x)))))
+	(equal :x 
+		   (match :x
+			 ((must-match (number x))
+			  x)))))
+
+(defpackage shadchen-tests)
+(defun-match- shadchen-tests::product (nil acc)
+  acc)
+(defun-match shadchen-tests::product ((list (! (number x))
+											(tail rest))
+									  acc)
+  (shadchen-tests::product rest (* x acc)))
+(defun-match shadchen-tests::product (anything)
+  (shadchen-tests::product anything 1))
+
+(eos:test defun-match 
+  (eos:is (equal 24 
+				 (shadchen-tests::product '(1 2 3 4)))))
+
+(eos:test defun-match-with-fail
+  (eos:signals (simple-error)
+	  (shadchen-tests::product '(1 a 3 4))))
+
+
 
 (eos:run!)
