@@ -185,6 +185,4 @@
   (eos:signals (simple-error)
 	  (shadchen-tests::product '(1 a 3 4))))
 
-
-
 (eos:run!)

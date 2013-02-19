@@ -6,6 +6,7 @@
 		   :must-match :!
 		   :match :match-lambda :defpattern
 		   :match-let :match-let* :match-loop
+		   :tail :number :symbol :string :keyword
 		   :_)
   (:use #:cl))
 
