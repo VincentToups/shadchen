@@ -34,8 +34,8 @@
 			(if (and (listp ,list-name)
 					 ,list-name)
 				(match1 ,first-expression (car ,list-name)
-				  (match1 (list ,@(cdr sub-expressions)) (cdr ,list-name) 
-					,@body))
+						(match1 (list ,@(cdr sub-expressions)) (cdr ,list-name) 
+								,@body))
 				*match-fail*))))))
 
   (defun match-list-expander (match-expression match-value body)
@@ -49,8 +49,8 @@
 	  `(let ((,name ,match-value))
 		 (if (listp ,name)
 			 (match1 ,car-match (car ,name)
-			   (match1 ,cdr-match (cdr ,name)
-				 ,@body))
+					 (match1 ,cdr-match (cdr ,name)
+							 ,@body))
 			 *match-fail*))))
 
   (defun match-quote-expander (match-expression match-value body)
@@ -84,7 +84,7 @@
 	  (:otherwise 
 	   (let ((s1 (cadr sub-expressions)))
 		 `(match1 ,s1 ,match-name 
-			(match1 (and* ,@(cddr sub-expressions)) ,match-name ,@body))))))
+				  (match1 (and* ,@(cddr sub-expressions)) ,match-name ,@body))))))
 
   (defun match-and-expander (match-expression match-value body)
 	(let ((name (gensym "MATCH-AND-EXPANDER-")))
@@ -148,6 +148,11 @@ two terms, a function and a match against the result.  Got
 		 *match-fail*))
 
   (defun match-literal-number (match-expression match-value body)
+	`(if (equalp ,match-expression ,match-value)
+		 (progn ,@body)
+		 *match-fail*))
+
+  (defun match-literal-character (match-expression match-value body)
 	`(if (equalp ,match-expression ,match-value)
 		 (progn ,@body)
 		 *match-fail*))
@@ -227,7 +232,8 @@ by that expression."
 	  ((or (not expr)
 		   (symbolp expr)
 		   (numberp expr)
-		   (stringp expr)) nil)
+		   (stringp expr)
+		   (characterp expr)) nil)
 	  ((extended-patternp (car expr))
 	   (calc-pattern-bindings-extended expr))
 	  ((listp expr)
@@ -349,6 +355,8 @@ by that expression."
 		 (match-literal-string match-expression match-value body))
 		((numberp match-expression)
 		 (match-literal-number match-expression match-value body))
+		((characterp match-expression)
+		 (match-literal-character match-expression match-value body))
 		((extended-patternp (car match-expression)) 
 		 (match-extended-pattern-expander match-expression match-value body))
 		((listp match-expression)
