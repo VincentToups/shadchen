@@ -301,7 +301,7 @@ by that expression."
 		(:pattern-only 
 		 (destructuring-bind (_ pattern) match-expr
 		   (declare (ignore _))
-		   (let ((sym (gensym))) 
+		   (let ((sym (gensym "must-match-failed-value-"))) 
 			 (match-must-match-expander 
 			  `(must-match 
 				,pattern 
@@ -325,8 +325,8 @@ by that expression."
 												(if (stringp ,value)
 													(error ,value)
 													(error "~S" ,value))))
-							   (,(gensym)
-								 (error 
+							   (_
+                                                            (error 
 								  (format nil
 										  ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
 												   pattern fail-pattern) 
