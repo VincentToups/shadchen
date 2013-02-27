@@ -313,8 +313,8 @@ by that expression."
 		 (destructuring-bind (_ pattern fail-pattern message-expression) match-expr
 		   (declare (ignore _))
 		   (let ((bound-symbols (calc-pattern-bindings pattern))
-			   (value (gensym))
-			   (result (gensym)))
+			   (value (gensym "must-match-value-"))
+			   (result (gensym "must-match-result-")))
 		   `(match1 (funcall 
 					 (lambda (,value)
 					   (let ((,result (match1 ,pattern ,value
