@@ -7,7 +7,7 @@
 		   :match :match-lambda :defpattern
 		   :match-let :match-let* :match-loop
 		   :tail :number :symbol :string :keyword
-		   :_)
+		   :_ :-ignore- :ignore :list*)
   (:use #:cl))
 
 

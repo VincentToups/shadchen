@@ -313,28 +313,28 @@ by that expression."
 		 (destructuring-bind (_ pattern fail-pattern message-expression) match-expr
 		   (declare (ignore _))
 		   (let ((bound-symbols (calc-pattern-bindings pattern))
-			   (value (gensym "must-match-value-"))
-			   (result (gensym "must-match-result-")))
-		   `(match1 (funcall 
-					 (lambda (,value)
-					   (let ((,result (match1 ,pattern ,value
-											  (list ,@bound-symbols))))
-						 (if (eq *match-fail* ,result)
-							 (match ,value 
-							   (,fail-pattern (let ((,value ,message-expression))
-												(if (stringp ,value)
-													(error ,value)
-													(error "~S" ,value))))
-							   (_
-                                                            (error 
-								  (format nil
-										  ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
-												   pattern fail-pattern) 
-										  ,value))))
-							 ,result)))
-					 (list ,@bound-symbols))
-				,val-expr
-			  ,@body))))
+				 (value (gensym "must-match-value-"))
+				 (result (gensym "must-match-result-")))
+			 `(match1 (funcall 
+					   (lambda (,value)
+						 (let ((,result (match1 ,pattern ,value
+										  (list ,@bound-symbols))))
+						   (if (eq *match-fail* ,result)
+							   (match ,value 
+								 (,fail-pattern (let ((,value ,message-expression))
+												  (if (stringp ,value)
+													  (error ,value)
+													  (error "~S" ,value))))
+								 (_
+								  (error 
+								   (format nil
+										   ,(format nil "must-match pattern (~S) failed and then the failed-value pattern (~S) also failed on value ~~S" 
+													pattern fail-pattern) 
+										   ,value))))
+							   ,result)))
+					   (list ,@bound-symbols))
+				  ,val-expr
+				,@body))))
 		(t (error "Unrecognized must-match pattern form ~S" match-expr))))
 
 ;;;
@@ -343,9 +343,13 @@ by that expression."
 	(defmacro match1 (match-expression match-value &body body)
 	  (cond 
 		((not match-expression) `(if (not ,match-value) (progn ,@body) *match-fail*))
-		((non-keyword-symbol match-expression)
+		((or (non-keyword-symbol match-expression)
+			 (and (listp match-expression)
+				  (eq (car match-expression) 'ignore)))
 		 (if (or (eq match-expression '_)
-				 (eq match-expression '-ignore-))
+				 (eq match-expression '-ignore-)
+				 (and (listp match-expression)
+					  (eq (car match-expression) 'ignore)))
 			 `(progn ,match-value ,@body)
 			 `(let ((,match-expression ,match-value))
 				,@body)))
@@ -429,6 +433,15 @@ An error is thrown when no matches are found."
 		  `(and (funcall #'car ,pat)
 				(funcall #'cdr 
 						 (list-rest ,@pats))))))
+
+  (defpattern list* (&rest patterns)
+	(if (length=1 patterns)
+		`(? #'listp ,(car patterns))
+		(let ((pat (car patterns))
+			  (pats (cdr patterns)))
+		  `(and (funcall #'car ,pat)
+				(funcall #'cdr 
+						 (list* ,@pats))))))
 
   (defpattern number (&optional (pattern '_))
 	`(p #'numberp ,pattern))
