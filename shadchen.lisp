@@ -34,8 +34,8 @@
 			(if (and (listp ,list-name)
 					 ,list-name)
 				(match1 ,first-expression (car ,list-name)
-						(match1 (list ,@(cdr sub-expressions)) (cdr ,list-name) 
-								,@body))
+				  (match1 (list ,@(cdr sub-expressions)) (cdr ,list-name) 
+					,@body))
 				*match-fail*))))))
 
   (defun match-list-expander (match-expression match-value body)
@@ -49,8 +49,8 @@
 	  `(let ((,name ,match-value))
 		 (if (listp ,name)
 			 (match1 ,car-match (car ,name)
-					 (match1 ,cdr-match (cdr ,name)
-							 ,@body))
+			   (match1 ,cdr-match (cdr ,name)
+				 ,@body))
 			 *match-fail*))))
 
   (defun match-quote-expander (match-expression match-value body)
@@ -84,7 +84,7 @@
 	  (:otherwise 
 	   (let ((s1 (cadr sub-expressions)))
 		 `(match1 ,s1 ,match-name 
-				  (match1 (and* ,@(cddr sub-expressions)) ,match-name ,@body))))))
+			(match1 (and* ,@(cddr sub-expressions)) ,match-name ,@body))))))
 
   (defun match-and-expander (match-expression match-value body)
 	(let ((name (gensym "MATCH-AND-EXPANDER-")))
@@ -251,6 +251,7 @@ by that expression."
 		 ((! must-match string number keyword non-keyword-symbol) (calc-pattern-bindings (cadr expr)))
 		 (one-of (calc-pattern-bindings (cadr expr)))
 		 (let (mapcar #'car (cdr expr)))
+		 (ignore (list))
 		 (t (error "calc-pattern-bindings: unrecognized pattern ~S." expr))))))
 
   (defun package-name* (p)
