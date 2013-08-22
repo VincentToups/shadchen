@@ -427,22 +427,15 @@ An error is thrown when no matches are found."
 		   (not (cdr lst)))))
 
   (defpattern list-rest (&rest patterns)
-	(if (length=1 patterns)
-		`(? #'listp ,(car patterns))
-		(let ((pat (car patterns))
-			  (pats (cdr patterns)))
-		  `(and (funcall #'car ,pat)
-				(funcall #'cdr 
-						 (list-rest ,@pats))))))
+	(let ((n (length patterns)))
+	  (cond ((= n 0) '(list))
+			((= n 1) `(list (tail ,(car patterns))))
+			(:otherwise
+			 `(list ,@(reverse (cdr (reverse (copy-list patterns))))
+					(tail ,(car (reverse patterns))))))))
 
   (defpattern list* (&rest patterns)
-	(if (length=1 patterns)
-		`(? #'listp ,(car patterns))
-		(let ((pat (car patterns))
-			  (pats (cdr patterns)))
-		  `(and (funcall #'car ,pat)
-				(funcall #'cdr 
-						 (list* ,@pats))))))
+	`(list-rest ,@patterns))
 
   (defpattern number (&optional (pattern '_))
 	`(p #'numberp ,pattern))
